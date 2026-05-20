@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Учёт успеваемости студентов колледжа | МЦК-Техникум им. С.П. Королёва</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'Roboto', Arial, sans-serif;
+        }
+        body {
+            background: #eef2ff;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #0f2b5e, #1e3a8a);
+            color: white;
+            padding: 24px 20px;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0 0 8px;
+            font-size: 1.8rem;
+        }
+        header p {
+            margin: 0;
+            opacity: 0.85;
+        }
+        .role-selector {
+            padding: 16px 20px;
+            background: #f8fafc;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            border-bottom: 1px solid #e2e8f0;
+            flex-wrap: wrap;
+        }
+        .role-btn {
+            padding: 10px 24px;
+            border: none;
+            background: #e2e8f0;
+            color: #1e293b;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        .role-btn.active {
+            background: #1e3a8a;
+            color: white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .content {
+            padding: 28px;
+            min-height: 500px;
+        }
+        .disciplines-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .discipline-btn {
+            background: #e2e8f0;
+            color: #1e293b;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        .discipline-btn.active {
+            background: #1e3a8a;
+            color: white;
+        }
+        .grade-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .grade-table th, .grade-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px 16px;
+            text-align: left;
+        }
+        .grade-table th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+        .grade-input {
+            width: 80px;
+            padding: 8px;
+            border-radius: 30px;
+            border: 1px solid #cbd5e1;
+            text-align: center;
+        }
+        .stat-card {
+            background: #f1f5f9;
+            border-radius: 20px;
+            padding: 16px;
+            margin: 16px 0;
+            line-height: 1.5;
+        }
+        .badge {
+            background: #e0f2fe;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+        .risk {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 16px;
+            margin: 12px 0;
+        }
+        .login-btn {
+            width: 100%;
+            background: #1e3a8a;
+            font-size: 1.1rem;
+            margin-top: 16px;
+            padding: 12px;
+            border: none;
+            color: white;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .logout-btn {
+            background: #64748b;
+            padding: 8px 20px;
+            border: none;
+            color: white;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        button {
+            background: #1e3a8a;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .back-btn {
+            background: #64748b;
+        }
+        .back-btn:hover {
+            background: #475569;
+        }
+        @media (max-width: 640px) {
+            .content { padding: 16px; }
+            .grade-table th, .grade-table td { padding: 8px; }
+            .grade-input { width: 60px; }
+            .role-btn { padding: 6px 16px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <header>
+        <h1>📘 Учёт успеваемости</h1>
+        <p>МЦК — Техникум им. С.П. Королёва</p>
+    </header>
+    <div class="content" id="app"></div>
+</div>
+
+<script>
+    // ---------- ДАННЫЕ (7 студентов, добавлены новые) ----------
+    const students = [
+        { id: 1, name: "Иванов Иван", group: "ИС-21", attendance: 92 },      // высокие оценки, высокая посещаемость
+        { id: 2, name: "Петрова Анна", group: "ИС-21", attendance: 78 },     // средний балл ~3.6, посещаемость 78% -> не риск
+        { id: 3, name: "Сидоров Алексей", group: "ПК-22", attendance: 95 },   // отличник
+        { id: 4, name: "Козлова Мария", group: "ИС-21", attendance: 45 },     // низкие оценки, низкая посещаемость -> РИСК
+        { id: 5, name: "Смирнов Дмитрий", group: "ПК-22", attendance: 68 },   // средний балл ~3.2, посещаемость 68% -> не риск (средний балл >3)
+        { id: 6, name: "Кузнецова Елена", group: "ИС-21", attendance: 35 },   // очень низкие оценки, посещаемость 35% -> РИСК
+        { id: 7, name: "Попов Артём", group: "ПК-22", attendance: 88 }        // хорошие оценки, высокая посещаемость
+    ];
+
+    const subjects = [
+        { id: 1, name: "Программирование" },
+        { id: 2, name: "Базы данных" },
+        { id: 3, name: "Математика" },
+        { id: 4, name: "Физика" },
+        { id: 5, name: "Английский язык" }
+    ];
+
+    let grades = [
+        // Иванов (id 1) - высокие оценки
+        { studentId: 1, subjectId: 1, value: 5 },
+        { studentId: 1, subjectId: 2, value: 4 },
+        { studentId: 1, subjectId: 3, value: 5 },
+        { studentId: 1, subjectId: 4, value: 4 },
+        { studentId: 1, subjectId: 5, value: 5 },
+        // Петрова (id 2) - средние
+        { studentId: 2, subjectId: 1, value: 3 },
+        { studentId: 2, subjectId: 2, value: 4 },
+        { studentId: 2, subjectId: 3, value: 4 },
+        { studentId: 2, subjectId: 4, value: 3 },
+        { studentId: 2, subjectId: 5, value: 4 },
+        // Сидоров (id 3) - отличник
+        { studentId: 3, subjectId: 1, value: 5 },
+        { studentId: 3, subjectId: 2, value: 5 },
+        { studentId: 3, subjectId: 3, value: 5 },
+        { studentId: 3, subjectId: 4, value: 5 },
+        { studentId: 3, subjectId: 5, value: 4 },
+        // Козлова (id 4) - низкие оценки
+        { studentId: 4, subjectId: 1, value: 2 },
+        { studentId: 4, subjectId: 2, value: 3 },
+        { studentId: 4, subjectId: 3, value: 3 },
+        { studentId: 4, subjectId: 4, value: 2 },
+        { studentId: 4, subjectId: 5, value: 3 },
+        // Смирнов (id 5) - средний балл ~3.2
+        { studentId: 5, subjectId: 1, value: 3 },
+        { studentId: 5, subjectId: 2, value: 3 },
+        { studentId: 5, subjectId: 3, value: 4 },
+        { studentId: 5, subjectId: 4, value: 3 },
+        { studentId: 5, subjectId: 5, value: 3 },
+        // Кузнецова (id 6) - очень низкие оценки
+        { studentId: 6, subjectId: 1, value: 2 },
+        { studentId: 6, subjectId: 2, value: 2 },
+        { studentId: 6, subjectId: 3, value: 2 },
+        { studentId: 6, subjectId: 4, value: 2 },
+        { studentId: 6, subjectId: 5, value: 2 },
+        // Попов (id 7) - хорошие оценки
+        { studentId: 7, subjectId: 1, value: 4 },
+        { studentId: 7, subjectId: 2, value: 4 },
+        { studentId: 7, subjectId: 3, value: 5 },
+        { studentId: 7, subjectId: 4, value: 4 },
+        { studentId: 7, subjectId: 5, value: 4 }
+    ];
+
+    function getGradesForStudent(studentId) {
+        return grades.filter(g => g.studentId === studentId);
+    }
+
+    function getAvgForStudent(studentId) {
+        const gr = getGradesForStudent(studentId);
+        if (gr.length === 0) return 0;
+        let sum = 0;
+        for (let g of gr) sum += g.value;
+        return (sum / gr.length).toFixed(2);
+    }
+
+    function setGrade(studentId, subjectId, newVal) {
+        let idx = grades.findIndex(g => g.studentId === studentId && g.subjectId === subjectId);
+        if (idx !== -1) {
+            grades[idx].value = newVal;
+        } else if (newVal >= 2 && newVal <= 5) {
+            grades.push({ studentId, subjectId, value: newVal });
+        }
+    }
+
+    let loggedIn = false;
+    let currentRole = null;
+    const FIXED_STUDENT_ID = 1;  // для демонстрации студент Иванов
+    let currentSubjectId = null;
+
+    function logout() {
+        loggedIn = false;
+        currentRole = null;
+        currentSubjectId = null;
+        render();
+    }
+
+    function login(role) {
+        currentRole = role;
+        loggedIn = true;
+        currentSubjectId = null;
+        render();
+    }
+
+    function render() {
+        const container = document.getElementById('app');
+
+        // ---- ЭКРАН ВХОДА ----
+        if (!loggedIn) {
+            container.innerHTML = `
+                <div class="role-selector" id="loginRoleSelector">
+                    <button class="role-btn" data-role="student">Студент</button>
+                    <button class="role-btn" data-role="teacher">Преподаватель</button>
+                    <button class="role-btn" data-role="admin">Администратор</button>
+                </div>
+                <button id="enterBtn" class="login-btn">Войти</button>
+            `;
+            let selectedRole = 'student';
+            const roleBtns = document.querySelectorAll('#loginRoleSelector .role-btn');
+            const enterBtn = document.getElementById('enterBtn');
+
+            const updateActive = (role) => {
+                roleBtns.forEach(btn => {
+                    if (btn.getAttribute('data-role') === role) {
+                        btn.classList.add('active');
+                        selectedRole = role;
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            };
+            updateActive('student');
+
+            roleBtns.forEach(btn => {
+                btn.addEventListener('click', () => updateActive(btn.getAttribute('data-role')));
+            });
+
+            enterBtn.addEventListener('click', () => login(selectedRole));
+            return;
+        }
+
+        // ---- СТУДЕНТ (таблица оценок + посещаемость) ----
+        if (currentRole === 'student') {
+            const student = students.find(s => s.id === FIXED_STUDENT_ID);
+            const avg = getAvgForStudent(FIXED_STUDENT_ID);
+            const myGrades = getGradesForStudent(FIXED_STUDENT_ID);
+
+            let rows = '';
+            for (let sub of subjects) {
+                let gradeObj = myGrades.find(g => g.subjectId === sub.id);
+                let val = gradeObj ? gradeObj.value : '—';
+                rows += `<tr><td>${sub.name}</td><td class="badge" style="text-align:center">${val}</td></tr>`;
+            }
+
+            container.innerHTML = `
+                <div class="flex-between">
+                    <h3 style="margin:0">Личный кабинет студента</h3>
+                    <button id="logoutBtnStudent" class="logout-btn">Выйти</button>
+                </div>
+                <div class="stat-card">
+                    <strong>${student.name}</strong><br>
+                    Группа: ${student.group}<br>
+                    📊 Средний балл: <strong>${avg}</strong><br>
+                    📅 Посещаемость: <strong>${student.attendance}%</strong>
+                </div>
+                <h3>Мои оценки</h3>
+                <table class="grade-table">
+                    <thead><tr><th>Дисциплина</th><th>Оценка</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                <div style="font-size:0.8rem; color:#475569;">ℹ️ Только просмотр</div>
+            `;
+            document.getElementById('logoutBtnStudent')?.addEventListener('click', logout);
+        }
+
+        // ---- ПРЕПОДАВАТЕЛЬ (выбор дисциплины → таблица студентов) ----
+        else if (currentRole === 'teacher') {
+            if (currentSubjectId === null) {
+                let disciplinesHtml = subjects.map(sub => `<button class="discipline-btn" data-subj-id="${sub.id}">${sub.name}</button>`).join('');
+                container.innerHTML = `
+                    <div class="flex-between">
+                        <h3 style="margin:0">Режим преподавателя</h3>
+                        <button id="logoutBtnTeacher" class="logout-btn">Выйти</button>
+                    </div>
+                    <p>Выберите дисциплину для выставления оценок:</p>
+                    <div class="disciplines-list" id="disciplinesList">${disciplinesHtml}</div>
+                `;
+                const btns = document.querySelectorAll('.discipline-btn');
+                btns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        currentSubjectId = parseInt(btn.dataset.subjId);
+                        render();
+                    });
+                });
+                document.getElementById('logoutBtnTeacher')?.addEventListener('click', logout);
+            } else {
+                const selectedSubject = subjects.find(s => s.id === currentSubjectId);
+                if (!selectedSubject) {
+                    currentSubjectId = null;
+                    render();
+                    return;
+                }
+                let rows = '';
+                for (let student of students) {
+                    const gradeObj = grades.find(g => g.studentId === student.id && g.subjectId === currentSubjectId);
+                    const currentVal = gradeObj ? gradeObj.value : '';
+                    rows += `<tr>
+                                <td>${student.name} (${student.group})</td>
+                                <td><input type="number" class="grade-input" data-student="${student.id}" value="${currentVal}" min="2" max="5" step="1"></td>
+                            </tr>`;
+                }
+                container.innerHTML = `
+                    <div class="flex-between">
+                        <h3 style="margin:0">Преподаватель: ${selectedSubject.name}</h3>
+                        <div>
+                            <button id="backToSubjectsBtn" class="back-btn" style="margin-right:8px;">← Назад</button>
+                            <button id="logoutBtnTeacher" class="logout-btn">Выйти</button>
+                        </div>
+                    </div>
+                    <table class="grade-table">
+                        <thead><tr><th>Студент</th><th>Оценка</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <button id="saveGradesBtn">Сохранить изменения</button>
+                    <div id="msg" style="margin-top: 12px;"></div>
+                `;
+                document.getElementById('saveGradesBtn')?.addEventListener('click', () => {
+                    const inputs = document.querySelectorAll('.grade-input');
+                    for (let inp of inputs) {
+                        let studentId = parseInt(inp.dataset.student);
+                        let newVal = parseInt(inp.value);
+                        if (!isNaN(newVal) && newVal >= 2 && newVal <= 5) {
+                            setGrade(studentId, currentSubjectId, newVal);
+                        }
+                    }
+                    const msgDiv = document.getElementById('msg');
+                    msgDiv.innerText = 'Оценки сохранены!';
+                    setTimeout(() => msgDiv.innerText = '', 2000);
+                    render();
+                });
+                document.getElementById('backToSubjectsBtn')?.addEventListener('click', () => {
+                    currentSubjectId = null;
+                    render();
+                });
+                document.getElementById('logoutBtnTeacher')?.addEventListener('click', logout);
+            }
+        }
+
+        // ---- АДМИНИСТРАТОР (группа риска по среднему баллу и посещаемости) ----
+        else if (currentRole === 'admin') {
+            const totalStudents = students.length;
+            const groups = [...new Set(students.map(s => s.group))];
+            
+            // НОВЫЙ КРИТЕРИЙ РИСКА: средний балл < 3 И посещаемость < 80%
+            const riskStudents = students.filter(s => {
+                const avg = parseFloat(getAvgForStudent(s.id));
+                return (avg < 3) && (s.attendance < 80);
+            });
+
+            let riskRows = '';
+            if (riskStudents.length === 0) {
+                riskRows = '<tr><td colspan="4" style="text-align:center">✅ Нет студентов в группе риска</td></tr>';
+            } else {
+                for (let s of riskStudents) {
+                    riskRows += `<tr>
+                        <td>${s.name}</td>
+                        <td>${s.group}</td>
+                        <td>ср.балл ${getAvgForStudent(s.id)}</td>
+                        <td>посещаемость ${s.attendance}%</td>
+                    </tr>`;
+                }
+            }
+
+            container.innerHTML = `
+                <div class="flex-between">
+                    <h3 style="margin:0">Панель администратора</h3>
+                    <button id="logoutBtnAdmin" class="logout-btn">Выйти</button>
+                </div>
+                <div class="stat-card">
+                    <strong>📊 Общая статистика</strong><br>
+                    Всего студентов: ${totalStudents}<br>
+                    Количество групп: ${groups.length}<br>
+                    Дисциплин в программе: ${subjects.length}
+                </div>
+                <h3>⚠️ Группа риска</h3>
+                <table class="grade-table">
+                    <thead><tr><th>Студент</th><th>Группа</th><th>Средний балл</th><th>Посещаемость</th></tr></thead>
+                    <tbody>${riskRows}</tbody>
+                </table>
+                <div style="font-size:0.8rem; margin-top:8px; color:#475569;">Критерий: средний балл &lt; 3 И посещаемость &lt; 80%</div>
+            `;
+            document.getElementById('logoutBtnAdmin')?.addEventListener('click', logout);
+        }
+    }
+
+    render();
+</script>
+</body>
+</html>
