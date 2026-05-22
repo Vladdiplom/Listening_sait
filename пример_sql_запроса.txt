@@ -1,0 +1,170 @@
+
+SQL-запрос
+-- Запрос для выявления студентов «группы риска»
+
+WITH
+
+-- 1. Расчёт текущего среднего балла
+current_avg AS (
+    SELECT
+        s.student_id,
+        AVG(g.value) AS avg_now
+    FROM student s
+    JOIN grade g
+        ON s.student_id = g.student_id
+    JOIN lesson l
+        ON g.lesson_id = l.lesson_id
+    WHERE g.value IS NOT NULL
+      AND l.lesson_date <= CURRENT_DATE
+    GROUP BY s.student_id
+),
+
+ 2. Расчёт среднего балла 4 недели назад
+past_avg AS (
+    SELECT
+        s.student_id,
+        AVG(g.value) AS avg_4weeks_ago
+    FROM student s
+    JOIN grade g
+        ON s.student_id = g.student_id
+    JOIN lesson l
+        ON g.lesson_id = l.lesson_id
+    WHERE g.value IS NOT NULL
+      AND l.lesson_date <= CURRENT_DATE - INTERVAL '4 weeks'
+    GROUP BY s.student_id
+),
+3. Анализ посещаемости
+attendance AS (
+    SELECT
+        s.student_id,
+
+        COUNT(
+            CASE
+                WHEN g.value IS NULL THEN 1
+            END
+        ) AS absences,
+        COUNT(*) AS total_lessons,
+
+        ROUND(
+            COUNT(
+                CASE
+                    WHEN g.value IS NULL THEN 1
+                END
+            )::numeric / COUNT(*) * 100,
+            2
+        ) AS absence_rate
+
+    FROM student s
+    JOIN grade g
+        ON s.student_id = g.student_id
+
+    JOIN lesson l
+        ON g.lesson_id = l.lesson_id
+    WHERE l.lesson_date >
+          CURRENT_DATE - INTERVAL '30 days'
+    GROUP BY s.student_id
+)
+
+-- 4. Итоговый анализ
+SELECT
+    s.student_id,
+    s.last_name || ' ' || s.first_name
+        AS student_name,
+    ag.group_code,
+    -- Текущий средний балл
+    COALESCE(ca.avg_now, 0)
+        AS current_avg,
+
+    -- Средний балл 4 недели назад
+    COALESCE(pa.avg_4weeks_ago, 0)
+        AS avg_4weeks_ago,
+
+    -- Изменение среднего балла
+    ROUND(
+        COALESCE(ca.avg_now, 0)
+        - COALESCE(pa.avg_4weeks_ago, 0),
+        2
+    ) AS avg_difference,
+
+    -- Критерий 1:
+    -- снижение среднего балла
+    CASE
+        WHEN (
+            COALESCE(ca.avg_now, 0)
+            - COALESCE(pa.avg_4weeks_ago, 0)
+        ) < -0.7
+        THEN TRUE
+        ELSE FALSE
+    END AS criterion_1_grade_drop,
+
+    -- Процент пропусков
+    COALESCE(a.absence_rate, 0)
+        AS absence_rate,
+
+    -- Критерий 2:
+    -- пропуски более 30%
+    CASE
+        WHEN COALESCE(a.absence_rate, 0) > 30
+        THEN TRUE
+        ELSE FALSE
+    END AS criterion_2_absence,
+
+    -- Критерий 3:
+    -- низкий средний балл
+    CASE
+        WHEN COALESCE(ca.avg_now, 0) < 3
+        THEN TRUE
+        ELSE FALSE
+    END AS criterion_3_low_average,
+
+    -- Итоговый флаг риска
+    CASE
+        WHEN (
+
+            (CASE
+                WHEN (
+                    COALESCE(ca.avg_now, 0)
+                    - COALESCE(pa.avg_4weeks_ago, 0)
+                ) < -0.7
+                THEN 1
+                ELSE 0
+            END)
+
+            +
+
+            (CASE
+                WHEN COALESCE(a.absence_rate, 0) > 30
+                THEN 1
+                ELSE 0
+            END)
+
+            +
+
+            (CASE
+                WHEN COALESCE(ca.avg_now, 0) < 3
+                THEN 1
+                ELSE 0
+            END)
+
+        ) >= 2
+
+        THEN TRUE
+        ELSE FALSE
+
+    END AS is_at_risk
+
+FROM student s
+
+JOIN academicgroup ag
+    ON s.group_id = ag.group_id
+
+LEFT JOIN current_avg ca
+    ON s.student_id = ca.student_id
+
+LEFT JOIN past_avg pa
+    ON s.student_id = pa.student_id
+
+LEFT JOIN attendance a
+    ON s.student_id = a.student_id
+
+WHERE s.birth_date IS NOT NULL;
